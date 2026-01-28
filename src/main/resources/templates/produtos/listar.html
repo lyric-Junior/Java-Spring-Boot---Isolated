@@ -1,0 +1,385 @@
+<!--
+    HERANÇA DE TEMPLATE: Este template estende layout.html
+    layout:decorate: Especifica qual template pai usar
+    ::conteudo: Substitui o fragmento "conteudo" do pai
+-->
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout}">  <!-- Estende layout.html -->
+
+<!--
+    PREENCHIMENTO DO <head> DO LAYOUT
+    layout:fragment="head": Sobrescreve o fragmento "head" do layout pai
+-->
+<head>
+    <title>Lista de Produtos</title>
+
+    <!--
+        Inclui o head do layout pai E adiciona estilos específicos
+        th:replace: Substitui este bloco pelo fragmento do layout
+        ::head: Referência ao fragmento "head" do layout
+    -->
+    <th:block th:replace="~{layout :: head}"></th:block>
+
+    <!-- Estilos específicos para esta página -->
+    <style>
+        .table-hover tbody tr:hover {
+            background-color: rgba(13, 110, 253, 0.05);
+        }
+        .acoes {
+            min-width: 150px;
+        }
+        .badge-estoque {
+            font-size: 0.8em;
+            padding: 4px 8px;
+        }
+    </style>
+</head>
+
+<body>
+<!--
+    PREENCHIMENTO DO CONTEÚDO PRINCIPAL
+    layout:fragment="conteudo": Define o conteúdo para o slot do layout
+-->
+<div layout:fragment="conteudo">
+    <!-- CABEÇALHO DA PÁGINA -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>
+            <i class="bi bi-box-seam"></i>
+            Lista de Produtos
+            <!--
+                th:if: Mostra apenas se houver termo de busca
+                th:text: Exibe o termo pesquisado
+            -->
+            <small th:if="${termoBusca}" class="text-muted fs-5">
+                - Busca: "<span th:text="${termoBusca}"></span>"
+            </small>
+        </h1>
+
+        <!-- Botão para novo produto -->
+        <a th:href="@{/produtos/novo}" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Novo Produto
+        </a>
+    </div>
+
+    <!--
+        CARD DE RESUMO (se não estiver em busca)
+        th:unless: O oposto de th:if (mostra se NÃO houver busca)
+    -->
+    <div th:unless="${termoBusca}" class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-white bg-info">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="bi bi-box"></i> Total
+                    </h5>
+                    <p class="card-text display-6">
+                        <!--
+                            #lists.size(produtos): Função Thymeleaf para tamanho da lista
+                            Ou poderia usar produtos.size() diretamente
+                        -->
+                        <span th:text="${#lists.size(produtos)}">0</span>
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card text-white bg-warning">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="bi bi-exclamation-triangle"></i> Estoque Baixo
+                    </h5>
+                    <p class="card-text display-6">
+                        <!--
+                            Expressão complexa: Filtra produtos com quantidade < 10
+                            th:with: Define variável local no template
+                        -->
+                        <span th:with="estoqueBaixo=${produtos.?[quantidade < 10]}"
+                              th:text="${#lists.size(estoqueBaixo)}">0</span>
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card text-white bg-success">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="bi bi-cash-stack"></i> Valor Total
+                    </h5>
+                    <p class="card-text h4">
+                        R$
+                        <!--
+                            #aggregates.sum(): Soma de propriedades
+                            item.*: Todas as instâncias na lista
+                            item.preco * item.quantidade para cada produto
+                        -->
+                        <span th:text="${#numbers.formatDecimal(
+                                #aggregates.sum(
+                                    produtos.![preco * quantidade]
+                                ), 0, 2
+                            )}">0,00</span>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TABELA DE PRODUTOS -->
+    <div class="card">
+        <div class="card-body">
+            <!--
+                th:if: Mostra mensagem se lista estiver vazia
+                th:unless: Mostra tabela se lista NÃO estiver vazia
+            -->
+            <div th:if="${#lists.isEmpty(produtos)}" class="text-center py-5">
+                <i class="bi bi-inbox" style="font-size: 3rem; color: #6c757d;"></i>
+                <h4 class="text-muted mt-3">
+                        <span th:if="${termoBusca}">
+                            Nenhum produto encontrado para "<span th:text="${termoBusca}"></span>"
+                        </span>
+                    <span th:unless="${termoBusca}">
+                            Nenhum produto cadastrado
+                        </span>
+                </h4>
+                <p class="text-muted">
+                        <span th:unless="${termoBusca}">
+                            Clique em "Novo Produto" para começar.
+                        </span>
+                    <a th:href="@{/produtos}" th:if="${termoBusca}">
+                        Voltar para lista completa
+                    </a>
+                </p>
+            </div>
+
+            <!-- TABELA (apenas se houver produtos) -->
+            <div th:unless="${#lists.isEmpty(produtos)}">
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped">
+                        <thead class="table-dark">
+                        <tr>
+                            <th>ID</th>
+                            <th>Nome</th>
+                            <th>Descrição</th>
+                            <th>Preço</th>
+                            <th>Estoque</th>
+                            <th>Valor Total</th>
+                            <th>Data Cadastro</th>
+                            <th class="acoes">Ações</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <!--
+                            th:each: LOOP - Itera sobre a lista de produtos
+                            produto: variável de iteração
+                            produtos: lista do Model
+                            stat: objeto de status (contador, par/ímpar, etc.)
+                        -->
+                        <tr th:each="produto, stat : ${produtos}"
+                            th:classappend="${stat.odd} ? 'table-light'">
+
+                            <!-- ID -->
+                            <td th:text="${produto.id}">1</td>
+
+                            <!-- NOME (com link para editar) -->
+                            <td>
+                                <a th:href="@{/produtos/editar/{id}(id=${produto.id})}"
+                                   class="text-decoration-none">
+                                    <strong th:text="${produto.nome}">Produto</strong>
+                                </a>
+                            </td>
+
+                            <!-- DESCRIÇÃO (com ellipsis se muito longa) -->
+                            <td>
+                                        <span th:if="${#strings.length(produto.descricao) > 50}"
+                                              th:title="${produto.descricao}"
+                                              class="d-inline-block text-truncate"
+                                              style="max-width: 200px;"
+                                              th:text="${#strings.substring(produto.descricao, 0, 50)} + '...'">
+                                            Descrição longa...
+                                        </span>
+                                <span th:unless="${#strings.length(produto.descricao) > 50}"
+                                      th:text="${produto.descricao} ?: 'Sem descrição'">
+                                            Descrição
+                                        </span>
+                            </td>
+
+                            <!-- PREÇO (formatado como moeda) -->
+                            <td>
+                                        <span class="badge bg-success">
+                                            R$
+                                            <span th:text="${#numbers.formatDecimal(produto.preco, 0, 2)}">
+                                                0,00
+                                            </span>
+                                        </span>
+                            </td>
+
+                            <!-- ESTOQUE (com cores condicionais) -->
+                            <td>
+                                <!--
+                                    th:classappend: Adiciona classe baseado em condição
+                                    th:styleappend: Adiciona estilo CSS inline
+                                -->
+                                <span th:classappend="${produto.quantidade < 10} ?
+                                              'estoque-baixo badge bg-danger' :
+                                              'estoque-ok badge bg-success'"
+                                      th:styleappend="${produto.quantidade < 10} ?
+                                              'font-weight: bold;' : ''"
+                                      th:text="${produto.quantidade}">
+                                            0
+                                        </span>
+
+                                <!-- Badge de alerta se estoque muito baixo -->
+                                <span th:if="${produto.quantidade < 5}"
+                                      class="badge bg-warning text-dark ms-1">
+                                            <i class="bi bi-exclamation-triangle"></i> Baixo
+                                        </span>
+                            </td>
+
+                            <!-- VALOR TOTAL (preço × quantidade) -->
+                            <td>
+                                <strong>
+                                    R$
+                                    <span th:text="${#numbers.formatDecimal(
+                                                produto.preco * produto.quantidade, 0, 2
+                                            )}">0,00</span>
+                                </strong>
+                            </td>
+
+                            <!-- DATA CADASTRO (formatada) -->
+                            <td>
+                                <!--
+                                    #temporals.format(): Formata datas
+                                    pattern: formato da data
+                                -->
+                                <small class="text-muted">
+                                            <span th:text="${#temporals.format(
+                                                produto.dataCadastro, 'dd/MM/yyyy HH:mm'
+                                            )}">01/01/2024 10:00</span>
+                                </small>
+                            </td>
+
+                            <!-- AÇÕES (botões Editar/Excluir) -->
+                            <td>
+                                <!--
+                                    th:href com parâmetros: @{/url/{id}(id=valor)}
+                                    onclick: Confirmação antes de excluir
+                                -->
+                                <a th:href="@{/produtos/editar/{id}(id=${produto.id})}"
+                                   class="btn btn-sm btn-warning me-1"
+                                   title="Editar">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+
+                                <a th:href="@{/produtos/excluir/{id}(id=${produto.id})}"
+                                   class="btn btn-sm btn-danger"
+                                   title="Excluir"
+                                   onclick="return confirm('Tem certeza que deseja excluir \''
+                                                   + [[${produto.nome}]] + '\'?')">
+                                    <i class="bi bi-trash"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        </tbody>
+
+                        <!-- RODAPÉ DA TABELA COM TOTAIS -->
+                        <tfoot>
+                        <tr class="table-secondary">
+                            <td colspan="4" class="text-end"><strong>Totais:</strong></td>
+                            <td>
+                                <strong th:text="${#aggregates.sum(produtos.![quantidade])}">
+                                    0
+                                </strong>
+                            </td>
+                            <td>
+                                <strong>
+                                    R$
+                                    <span th:text="${#numbers.formatDecimal(
+                                                #aggregates.sum(
+                                                    produtos.![preco * quantidade]
+                                                ), 0, 2
+                                            )}">0,00</span>
+                                </strong>
+                            </td>
+                            <td colspan="2">
+                                <!--
+                                    #aggregates.avg(): Média
+                                    #aggregates.min(): Mínimo
+                                    #aggregates.max(): Máximo
+                                -->
+                                <small class="text-muted">
+                                    Média: R$
+                                    <span th:text="${#numbers.formatDecimal(
+                                                #aggregates.avg(produtos.![preco]), 0, 2
+                                            )}">0,00</span>
+                                </small>
+                            </td>
+                        </tr>
+                        </tfoot>
+                    </table>
+                </div>
+
+                <!-- PAGINAÇÃO (exemplo - você precisaria implementar no Controller) -->
+                <!--
+                <nav th:if="${totalPaginas > 1}">
+                    <ul class="pagination justify-content-center">
+                        <li class="page-item" th:classappend="${paginaAtual == 1} ? 'disabled'">
+                            <a class="page-link" th:href="@{/produtos(pagina=${paginaAtual - 1})}">
+                                Anterior
+                            </a>
+                        </li>
+
+                        <li th:each="i : ${#numbers.sequence(1, totalPaginas)}"
+                            class="page-item" th:classappend="${i == paginaAtual} ? 'active'">
+                            <a class="page-link" th:href="@{/produtos(pagina=${i})}"
+                               th:text="${i}">1</a>
+                        </li>
+
+                        <li class="page-item" th:classappend="${paginaAtual == totalPaginas} ? 'disabled'">
+                            <a class="page-link" th:href="@{/produtos(pagina=${paginaAtual + 1})}">
+                                Próxima
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+                -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!--
+    SCRIPTS ESPECÍFICOS DESTA PÁGINA
+    layout:fragment="scripts": Injeta scripts no slot do layout
+-->
+<th:block layout:fragment="scripts">
+    <script>
+        // Script específico para a página de listagem
+        document.addEventListener('DOMContentLoaded', function() {
+            // Exemplo: Adiciona tooltips aos botões
+            var tooltipTriggerList = [].slice.call(
+                document.querySelectorAll('[title]')
+            );
+            var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+
+            // Auto-foco no campo de busca se houver termo
+            const searchInput = document.querySelector('input[name="nome"]');
+            if (searchInput && searchInput.value) {
+                searchInput.focus();
+                searchInput.select();
+            }
+
+            // Mostra notificação se houver mensagem de sucesso na URL
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.has('sucesso')) {
+                console.log('Produto salvo com sucesso!');
+            }
+        });
+    </script>
+</th:block>
+</body>
+</html>

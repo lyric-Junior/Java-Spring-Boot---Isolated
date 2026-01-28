@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout}">
+
+<head>
+    <!--
+        Título dinâmico: Editar ou Novo Produto
+        th:text com operador ternário: condição ? valorSeVerdadeiro : valorSeFalso
+        produto.id: Se tem ID, é edição. Se não tem, é novo.
+    -->
+    <title th:text="${produto.id} ? 'Editar Produto' : 'Novo Produto'">
+        Novo Produto
+    </title>
+
+    <th:block th:replace="~{layout :: head}"></th:block>
+
+    <style>
+        /* Estilos específicos do formulário */
+        .form-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .form-label {
+            font-weight: 500;
+        }
+        .required::after {
+            content: " *";
+            color: #dc3545;
+        }
+        .help-text {
+            font-size: 0.875em;
+            color: #6c757d;
+        }
+    </style>
+</head>
+
+<body>
+<div layout:fragment="conteudo">
+    <div class="form-container">
+        <!--
+            CABEÇALHO DINÂMICO: Mostra se é edição ou novo produto
+        -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>
+                <i class="bi"
+                   th:classappend="${produto.id} ? 'bi-pencil-square' : 'bi-plus-circle'"></i>
+                <span th:text="${produto.id} ? 'Editar Produto' : 'Novo Produto'">
+                        Novo Produto
+                    </span>
+
+                <!-- Mostra nome do produto se estiver editando -->
+                <small th:if="${produto.id}" class="text-muted fs-5">
+                    - <span th:text="${produto.nome}"></span>
+                </small>
+            </h1>
+
+            <!-- Link para voltar à lista -->
+            <a th:href="@{/produtos}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Voltar
+            </a>
+        </div>
+
+        <!-- CARD DO FORMULÁRIO -->
+        <div class="card">
+            <div class="card-body">
+                <!--
+                    FORMULÁRIO PRINCIPAL
+                    th:object="${produto}": Vincula formulário ao objeto do Model
+                    th:action: URL para onde enviar o formulário
+                    th:method: Método HTTP (POST)
+
+                    IMPORTANTE: Campos devem ter th:field="*{nomeCampo}"
+                    *{} refere-se ao objeto vinculado (produto)
+                -->
+                <form th:object="${produto}"
+                      th:action="@{/produtos/salvar}"
+                      method="post"
+                      id="produtoForm">
+
+                    <!--
+                        CAMPO OCULTO PARA ID
+                        th:field="*{id}": Vincula ao produto.id
+                        Se for novo produto, id será null/nulo
+                        Se for edição, id terá valor
+                    -->
+                    <input type="hidden" th:field="*{id}" />
+
+                    <!--
+                        CAMPO OCULTO PARA DATA CADASTRO (se edição)
+                        th:if: Só mostra se produto já existir (tem id)
+                    -->
+                    <input type="hidden" th:field="*{dataCadastro}"
+                           th:if="${produto.id}" />
+
+                    <!-- GRUPO: NOME DO PRODUTO -->
+                    <div class="mb-3">
+                        <label for="nome" class="form-label required">
+                            Nome do Produto
+                        </label>
+                        <input type="text"
+                               class="form-control"
+                               id="nome"
+                               th:field="*{nome}"
+                               th:classappend="${#fields.hasErrors('nome')} ? 'is-invalid'"
+                               placeholder="Ex: Arroz Integral 5kg"
+                               required
+                               minlength="3"
+                               maxlength="100">
+
+                        <!--
+                            VALIDAÇÃO: Mensagem de erro se campo inválido
+                            th:if: Mostra apenas se houver erro
+                            th:errors: Mostra mensagens de erro do BindingResult
+                        -->
+                        <div th:if="${#fields.hasErrors('nome')}" class="invalid-feedback">
+                            <span th:errors="*{nome}">Erro no nome</span>
+                        </div>
+
+                        <!-- Texto de ajuda -->
+                        <div class="help-text">
+                            Nome descritivo do produto (3 a 100 caracteres).
+                        </div>
+                    </div>
+
+                    <!-- GRUPO: DESCRIÇÃO -->
+                    <div class="mb-3">
+                        <label for="descricao" class="form-label">
+                            Descrição
+                        </label>
+                        <textarea class="form-control"
+                                  id="descricao"
+                                  th:field="*{descricao}"
+                                  rows="3"
+                                  placeholder="Descreva características do produto..."
+                                  maxlength="255"></textarea>
+
+                        <!-- Contador de caracteres (JavaScript) -->
+                        <div class="d-flex justify-content-between mt-1">
+                            <div class="help-text">
+                                Descrição opcional do produto.
+                            </div>
+                            <div class="text-muted small">
+                                <span id="contadorDescricao">0</span>/255 caracteres
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- LINHA: PREÇO E QUANTIDADE -->
+                    <div class="row">
+                        <!-- PREÇO -->
+                        <div class="col-md-6 mb-3">
+                            <label for="preco" class="form-label required">
+                                Preço Unitário (R$)
+                            </label>
+
+                            <div class="input-group">
+                                <span class="input-group-text">R$</span>
+                                <input type="number"
+                                       class="form-control"
+                                       id="preco"
+                                       th:field="*{preco}"
+                                       th:classappend="${#fields.hasErrors('preco')} ? 'is-invalid'"
+                                       step="0.01"
+                                       min="0.01"
+                                       max="999999.99"
+                                       placeholder="0,00"
+                                       required>
+                            </div>
+
+                            <!-- Mensagem de erro para preço -->
+                            <div th:if="${#fields.hasErrors('preco')}" class="invalid-feedback d-block">
+                                <span th:errors="*{preco}">Erro no preço</span>
+                            </div>
+
+                            <div class="help-text">
+                                Preço de venda unitário (mínimo R$ 0,01).
+                            </div>
+                        </div>
+
+                        <!-- QUANTIDADE -->
+                        <div class="col-md-6 mb-3">
+                            <label for="quantidade" class="form-label required">
+                                Quantidade em Estoque
+                            </label>
+
+                            <div class="input-group">
+                                <input type="number"
+                                       class="form-control"
+                                       id="quantidade"
+                                       th:field="*{quantidade}"
+                                       th:classappend="${#fields.hasErrors('quantidade')} ? 'is-invalid'"
+                                       min="0"
+                                       max="10000"
+                                       placeholder="0"
+                                       required>
+                                <span class="input-group-text">unidades</span>
+                            </div>
+
+                            <!-- Mensagem de erro para quantidade -->
+                            <div th:if="${#fields.hasErrors('quantidade')}" class="invalid-feedback d-block">
+                                <span th:errors="*{quantidade}">Erro na quantidade</span>
+                            </div>
+
+                            <div class="help-text">
+                                Quantidade disponível em estoque (0 a 10.000).
+                            </div>
+                        </div>
+                    </div>
+
+                    <!--
+                        INFORMAÇÕES ADICIONAIS (somente leitura para edição)
+                    -->
+                    <div th:if="${produto.id}" class="mb-4 p-3 bg-light rounded">
+                        <h6 class="mb-2">
+                            <i class="bi bi-info-circle"></i> Informações do Cadastro
+                        </h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <small class="text-muted">ID do Produto:</small>
+                                <div>
+                                    <strong th:text="${produto.id}">1</strong>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <small class="text-muted">Data de Cadastro:</small>
+                                <div>
+                                    <strong th:text="${#temporals.format(
+                                            produto.dataCadastro, 'dd/MM/yyyy HH:mm:ss'
+                                        )}">01/01/2024 10:00:00</strong>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Cálculo do valor total (preço × quantidade) -->
+                        <div class="mt-2">
+                            <small class="text-muted">Valor Total em Estoque:</small>
+                            <div>
+                                <strong class="text-success">
+                                    R$
+                                    <span th:text="${#numbers.formatDecimal(
+                                            produto.preco * produto.quantidade, 0, 2
+                                        )}">0,00</span>
+                                </strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!--
+                        BOTÕES DE AÇÃO
+                        th:if: Botão "Excluir" só aparece se for edição
+                    -->
+                    <div class="d-flex justify-content-between mt-4">
+                        <div>
+                            <!-- Botão Excluir (só para edição) -->
+                            <a th:if="${produto.id}"
+                               th:href="@{/produtos/excluir/{id}(id=${produto.id})}"
+                               class="btn btn-danger"
+                               onclick="return confirm('Tem certeza que deseja excluir este produto?')">
+                                <i class="bi bi-trash"></i> Excluir
+                            </a>
+                        </div>
+
+                        <div>
+                            <!-- Botão Cancelar -->
+                            <a th:href="@{/produtos}" class="btn btn-outline-secondary me-2">
+                                <i class="bi bi-x-circle"></i> Cancelar
+                            </a>
+
+                            <!-- Botão Salvar -->
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi"
+                                   th:classappend="${produto.id} ? 'bi-check-circle' : 'bi-save'"></i>
+                                <span th:text="${produto.id} ? 'Atualizar' : 'Salvar'">
+                                        Salvar
+                                    </span>
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!--
+            CARD DE AJUDA (dicas)
+            th:unless: Só mostra se for NOVO produto (não tem ID)
+        -->
+        <div th:unless="${produto.id}" class="card mt-4">
+            <div class="card-header bg-light">
+                <h6 class="mb-0">
+                    <i class="bi bi-question-circle"></i> Dicas para cadastro
+                </h6>
+            </div>
+            <div class="card-body">
+                <ul class="mb-0">
+                    <li>Use nomes descritivos que facilitem a busca</li>
+                    <li>Mantenha o estoque atualizado para evitar vendas sem produto</li>
+                    <li>Produtos com menos de 10 unidades são marcados como "estoque baixo"</li>
+                    <li>O sistema alerta automaticamente quando o estoque está abaixo de 5 unidades</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- SCRIPTS ESPECÍFICOS DO FORMULÁRIO -->
+<th:block layout:fragment="scripts">
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // ========== CONTADOR DE CARACTERES PARA DESCRIÇÃO ==========
+            const descricaoTextarea = document.getElementById('descricao');
+            const contadorElement = document.getElementById('contadorDescricao');
+
+            if (descricaoTextarea && contadorElement) {
+                // Atualiza contador inicial
+                contadorElement.textContent = descricaoTextarea.value.length;
+
+                // Atualiza enquanto digita
+                descricaoTextarea.addEventListener('input', function() {
+                    contadorElement.textContent = this.value.length;
+                });
+            }
+
+            // ========== FORMATAÇÃO DO PREÇO ==========
+            const precoInput = document.getElementById('preco');
+            if (precoInput) {
+                // Formata ao perder o foco
+                precoInput.addEventListener('blur', function() {
+                    let value = parseFloat(this.value);
+                    if (!isNaN(value)) {
+                        this.value = value.toFixed(2);
+                    }
+                });
+
+                // Validação em tempo real
+                precoInput.addEventListener('input', function() {
+                    let value = parseFloat(this.value);
+                    if (value < 0.01 && this.value !== '') {
+                        this.setCustomValidity('Preço mínimo é R$ 0,01');
+                    } else if (value > 999999.99) {
+                        this.setCustomValidity('Preço máximo é R$ 999.999,99');
+                    } else {
+                        this.setCustomValidity('');
+                    }
+                });
+            }
+
+            // ========== FORMATAÇÃO DA QUANTIDADE ==========
+            const quantidadeInput = document.getElementById('quantidade');
+            if (quantidadeInput) {
+                quantidadeInput.addEventListener('input', function() {
+                    let value = parseInt(this.value);
+                    if (value < 0 && this.value !== '') {
+                        this.setCustomValidity('Quantidade não pode ser negativa');
+                    } else if (value > 10000) {
+                        this.setCustomValidity('Quantidade máxima é 10.000');
+                    } else {
+                        this.setCustomValidity('');
+                    }
+                });
+            }
+
+            // ========== VALIDAÇÃO DO FORMULÁRIO ANTES DE ENVIAR ==========
+            const form = document.getElementById('produtoForm');
+            if (form) {
+                form.addEventListener('submit', function(event) {
+                    // Validação customizada adicional
+                    const nome = document.getElementById('nome').value.trim

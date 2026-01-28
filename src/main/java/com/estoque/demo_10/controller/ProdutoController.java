@@ -25,7 +25,7 @@ import java.util.List;
  * NUNCA deve conter lógica de negócio! Apenas orquestração.
  */
 @Controller  // ← Para aplicações web com Thymeleaf/HTML
-@RequestMapping("/produtos")  // ← Todas as URLs começam com /produtos
+@RequestMapping("/index")  // ← Todas as URLs começam com /produtos
 public class ProdutoController {
 
     /**
